@@ -459,7 +459,6 @@ def stream(
     Returns:
         None
     """
-    is_new = False
     time_threshold = max(time_threshold, 1)
     frame_threshold = max(frame_threshold, 1)
 

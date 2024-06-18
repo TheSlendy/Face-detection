@@ -74,6 +74,7 @@ def analysis(
         detector_backend=detector_backend,
         distance_metric=distance_metric,
         model_name=model_name,
+        raw_img="",
     )
 
     freezed_img = None
@@ -134,6 +135,7 @@ def analysis(
                     detector_backend=detector_backend,
                     distance_metric=distance_metric,
                     model_name=model_name,
+                    raw_img=raw_img
                 )
 
                 # freeze the img after analysis
@@ -181,6 +183,7 @@ def search_identity(
         model_name: str,
         detector_backend: str,
         distance_metric: str,
+        raw_img,
 ) -> Tuple[Optional[str], Optional[np.ndarray]]:
     """
     Search an identity in facial database.
@@ -195,6 +198,7 @@ def search_identity(
             (default is opencv).
         distance_metric (string): Metric for measuring similarity. Options: 'cosine',
             'euclidean', 'euclidean_l2' (default is cosine).
+        raw_img (UMat): raw image from camera.
     Returns:
         result (tuple): result consisting of following objects
             identified image path (str)
@@ -212,11 +216,11 @@ def search_identity(
             enforce_detection=False,
             silent=True,
         )
-        if dfs[0].empty:
+        if dfs is None:     # fix this
             print("New visitor")
-            cv2.imwrite(f"../../database/visitor_{visitor_number:05d}.jpg",
-                        detected_face)
-            visitor_number += 1
+            if raw_img:
+                cv2.imwrite(f"../../database/visitor_{visitor_number:05d}.jpg", raw_img)
+                visitor_number += 1
         else:
             print("Old Visitor")
     except ValueError as err:
@@ -437,6 +441,7 @@ def perform_facial_recognition(
         detector_backend: str,
         distance_metric: str,
         model_name: str,
+        raw_img: str,
 ) -> np.ndarray:
     """
     Perform facial recognition
@@ -454,6 +459,7 @@ def perform_facial_recognition(
             'euclidean', 'euclidean_l2' (default is cosine).
         model_name (str): Model for face recognition. Options: VGG-Face, Facenet, Facenet512,
             OpenFace, DeepFace, DeepID, Dlib, ArcFace, SFace and GhostFaceNet (default is VGG-Face).
+        raw_img (str): raw image from camera.
     Returns:
         img (np.ndarray): image with identified face informations
     """
@@ -465,6 +471,7 @@ def perform_facial_recognition(
             detector_backend=detector_backend,
             distance_metric=distance_metric,
             model_name=model_name,
+            raw_img=raw_img
         )
         if target_label is None:
             continue
