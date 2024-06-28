@@ -11,8 +11,7 @@ t = gmtime(time())
 
 visits_today = 0
 unique_visitors_number = len(people)
-for p in people:
-    print(p)
+
 with open(f"run_data/run_{t.tm_hour}-{t.tm_min}-{t.tm_sec}_{t.tm_mday}-{t.tm_mon}-{t.tm_year}.csv", mode="w") as run:
     for person in people:
         run.write(
@@ -20,5 +19,19 @@ with open(f"run_data/run_{t.tm_hour}-{t.tm_min}-{t.tm_sec}_{t.tm_mday}-{t.tm_mon
             f"{person.age}; {person.sex}; {person.moods}\n")
         visits_today += person.detects_number
 
+indexes = []
+detects = 0
+for person in people:
+    if person.detects_number > detects:
+        if indexes:
+            indexes.clear()
+        indexes.append(people.index(person))
+        detects = person.detects_number
+    elif person.detects_number == detects:
+        indexes.append(people.index(person))
+
+
+constants = [people[i].path_to_photo for i in indexes]
 with open(f"day_data.csv", mode="a") as day:
-    day.write(f"{t.tm_mday}-{t.tm_mon}-{t.tm_year}, {end}, {unique_visitors_number}, {visits_today}\n")
+    day.write(f"{t.tm_mday}-{t.tm_mon}-{t.tm_year}; {end}; "
+              f"{unique_visitors_number}; {visits_today}; {constants}\n")
