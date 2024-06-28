@@ -74,7 +74,7 @@ def analysis(
         detector_backend=detector_backend,
         distance_metric=distance_metric,
         model_name=model_name,
-        raw_img="",
+        raw_img=None,
     )
 
     freezed_img = None
@@ -204,7 +204,7 @@ def search_identity(
             identified image path (str)
             identified image itself (np.ndarray)
     """
-    visitor_number = 0
+    visitor_number = 1
     target_path = None
     try:
         dfs = DeepFace.find(
@@ -216,13 +216,6 @@ def search_identity(
             enforce_detection=False,
             silent=True,
         )
-        if dfs is None:     # fix this
-            print("New visitor")
-            if raw_img:
-                cv2.imwrite(f"../../database/visitor_{visitor_number:05d}.jpg", raw_img)
-                visitor_number += 1
-        else:
-            print("Old Visitor")
     except ValueError as err:
         if f"No item found in {db_path}" in str(err):
             logger.warn(
@@ -233,13 +226,16 @@ def search_identity(
         else:
             raise err
     if len(dfs) == 0:
-        # you may consider to return unknown person's image here
         return None, None
 
     # detected face is coming from parent, safe to access 1st index
     df = dfs[0]
-
     if df.shape[0] == 0:
+        if raw_img is not None:
+            print("New visitor")
+            image_path = f"database/visitor_{visitor_number:05d}.jpg"
+            print(cv2.imwrite(image_path, detected_face))
+            visitor_number += 1
         return None, None
 
     candidate = df.iloc[0]
