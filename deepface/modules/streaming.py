@@ -10,6 +10,7 @@ import cv2
 
 # project dependencies
 from deepface import DeepFace
+from deepface.structs import Person
 from deepface.commons import logger as log
 
 logger = log.get_singletonish_logger()
@@ -19,6 +20,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 IDENTIFIED_IMG_SIZE = 112
 TEXT_COLOR = (255, 255, 255)
+visitor_number = 1
+people = []
 
 
 # pylint: disable=unused-variable
@@ -185,6 +188,7 @@ def search_identity(
         distance_metric: str,
         raw_img,
 ) -> Tuple[Optional[str], Optional[np.ndarray]]:
+    global visitor_number
     """
     Search an identity in facial database.
     Args:
@@ -204,7 +208,7 @@ def search_identity(
             identified image path (str)
             identified image itself (np.ndarray)
     """
-    visitor_number = 1
+
     target_path = None
     try:
         dfs = DeepFace.find(
@@ -232,23 +236,52 @@ def search_identity(
     df = dfs[0]
     if df.shape[0] == 0:
         if raw_img is not None:
-            print("New visitor")
+            data = DeepFace.analyze(
+                img_path=detected_face,
+                actions=("age", "gender", "emotion"),
+                detector_backend="skip",
+                enforce_detection=False,
+                silent=True,
+            )[0]
             image_path = f"database/visitor_{visitor_number:05d}.jpg"
             print(cv2.imwrite(image_path, detected_face))
             visitor_number += 1
+            people.append(
+                Person(path=target_path, facial_area=None, sex=data['dominant_gender'], age=round(data['age'])))
+            people[-1].moods.append(data["dominant_emotion"])
         return None, None
 
     candidate = df.iloc[0]
     target_path = candidate["identity"]
     logger.info(f"Hello, {target_path}")
-
-    # load found identity image - extracted if possible
     target_objs = DeepFace.extract_faces(
         img_path=target_path,
         detector_backend=detector_backend,
         enforce_detection=False,
         align=True,
     )
+    data = DeepFace.analyze(
+        img_path=detected_face,
+        actions=("age", "gender", "emotion"),
+        detector_backend="skip",
+        enforce_detection=False,
+        silent=True,
+    )
+    for obj, d in zip(target_objs, data):
+        if people:
+            for person in people:
+                if target_path == person.path_to_photo:
+                    person.detects_number += 1
+                    person.age = round((person.age + d["age"]) / 2)
+                    person.moods.append(d["dominant_emotion"])
+                    if person.facial_areas is None:
+                        person.facial_areas = obj['facial_area']
+                    break
+            else:
+                if target_path:
+                    people.append(Person(path=target_path, facial_area=obj['facial_area'], sex=d["dominant_gender"],
+                                         age=round(d["age"])))
+                    people[-1].moods.append(d["dominant_emotion"])
 
     # extract facial area of the identified image if and only if it has one face
     # otherwise, show image as is
@@ -467,7 +500,8 @@ def perform_facial_recognition(
             detector_backend=detector_backend,
             distance_metric=distance_metric,
             model_name=model_name,
-            raw_img=raw_img
+            raw_img=raw_img,
+
         )
         if target_label is None:
             continue
