@@ -1,13 +1,21 @@
+from random import randint
+
+
 class Person:
-    def __init__(self, path, facial_area, sex, age):
-        self.detects_number = 1
-        self.moods = []
+    def __init__(self, ID, path, mood, sex, age, visit_time):
+        self.id = ID
+        self.mood = mood
         self.path_to_photo = path
-        self.facial_areas = facial_area
         self.sex = sex
         self.age = age
+        self.seconds = randint(6, 7)
+        self.visit_time = visit_time
 
-    def __str__(self):
-        return (f"Person has been detected {self.detects_number}\n"
-                f"Path to photo is {self.path_to_photo}\n"
-                f"Facial areas are {self.facial_areas}")
+    def __to_dict__(self):
+        return {"id": self.id, "photo": self.path_to_photo,
+                "age": self.age, "gender": self.sex,
+                "mood": self.mood, "time": self.seconds, "visits": self.visit_time}
+
+    def __to_list__(self):
+        return [self.id, self.path_to_photo,
+                self.age, self.sex, self.mood, self.seconds, self.visit_time]

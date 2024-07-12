@@ -1,0 +1,8 @@
+id;photo;age;gender;mood;time;visit_time
+1;database/visitor_00001.jpg;27;Man;angry;12;0.005787586702240838
+2;database/visitor_00002.jpg;18;Man;angry;7;0.007431125905778673
+2;database/visitor_00002.jpg;23;Man;angry;7;0.008163907925287883
+1;database/visitor_00001.jpg;30;Man;angry;12;0.008878034816847907
+3;database/visitor_00003.jpg;30;Female;angry;6;0.00959194262822469
+3;database/visitor_00003.jpg;37;Female;angry;7;0.010308786696857876
+3;database/visitor_00003.jpg;22;Female;angry;6;0.012084044880337185

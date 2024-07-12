@@ -1,6 +1,7 @@
 # built-in dependencies
 import os
 import time
+from random import randint
 from typing import List, Tuple, Optional
 
 # 3rd party dependencies
@@ -12,6 +13,7 @@ import cv2
 from deepface import DeepFace
 from deepface.structs import Person
 from deepface.commons import logger as log
+import deepface.datas as dt
 
 logger = log.get_singletonish_logger()
 
@@ -21,8 +23,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 IDENTIFIED_IMG_SIZE = 112
 TEXT_COLOR = (255, 255, 255)
 visitor_number = 1
-people = []
 
+dp = dt.DataProcess()
 
 # pylint: disable=unused-variable
 def analysis(
@@ -96,16 +98,14 @@ def analysis(
         raw_img = img.copy()
 
         faces_coordinates = []
+        faces_coordinates = grab_facial_areas(
+            img=img, detector_backend=detector_backend, anti_spoofing=anti_spoofing
+        )
         if freeze is False:
-            faces_coordinates = grab_facial_areas(
-                img=img, detector_backend=detector_backend, anti_spoofing=anti_spoofing
-            )
-
             # we will pass img to analyze modules (identity, demography) and add some illustrations
             # that is why, we will not be able to extract detected face from img clearly
             detected_faces = extract_facial_areas(img=img, faces_coordinates=faces_coordinates)
 
-            img = highlight_facial_areas(img=img, faces_coordinates=faces_coordinates)
             img = countdown_to_freeze(
                 img=img,
                 faces_coordinates=faces_coordinates,
@@ -154,10 +154,10 @@ def analysis(
             # reset counter for freezing
             tic = time.time()
             logger.info("freeze released")
-
+        img = highlight_facial_areas(img=img, faces_coordinates=faces_coordinates)
         freezed_img = countdown_to_release(img=freezed_img, tic=tic, time_threshold=time_threshold)
 
-        cv2.imshow("img", img if freezed_img is None else freezed_img)
+        cv2.imshow("img", img)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):  # press q to quit
             break
@@ -235,20 +235,21 @@ def search_identity(
     # detected face is coming from parent, safe to access 1st index
     df = dfs[0]
     if df.shape[0] == 0:
-        if raw_img is not None:
-            data = DeepFace.analyze(
-                img_path=detected_face,
-                actions=("age", "gender", "emotion"),
-                detector_backend="skip",
-                enforce_detection=False,
-                silent=True,
-            )[0]
-            image_path = f"database/visitor_{visitor_number:05d}.jpg"
-            print(cv2.imwrite(image_path, detected_face))
-            visitor_number += 1
-            people.append(
-                Person(path=target_path, facial_area=None, sex=data['dominant_gender'], age=round(data['age'])))
-            people[-1].moods.append(data["dominant_emotion"])
+        data = DeepFace.analyze(
+            img_path=detected_face,
+            actions=("age", "gender", "emotion"),
+            detector_backend="skip",
+            enforce_detection=False,
+            silent=True,
+        )[0]
+        image_path = f"database/visitor_{visitor_number:05d}.jpg"
+        cv2.imwrite(image_path, detected_face)
+        dp.people.append(
+            Person(ID=visitor_number, path=image_path,
+                   mood=data["dominant_emotion"], sex=data['dominant_gender'],
+                   age=round(data['age']), visit_time=(time.time() - dp.start) / 3600))
+        visitor_number += 1
+        dp.update_run_data()
         return None, None
 
     candidate = df.iloc[0]
@@ -260,29 +261,6 @@ def search_identity(
         enforce_detection=False,
         align=True,
     )
-    data = DeepFace.analyze(
-        img_path=detected_face,
-        actions=("age", "gender", "emotion"),
-        detector_backend="skip",
-        enforce_detection=False,
-        silent=True,
-    )
-    for obj, d in zip(target_objs, data):
-        if people:
-            for person in people:
-                if target_path == person.path_to_photo:
-                    person.detects_number += 1
-                    person.age = round((person.age + d["age"]) / 2)
-                    person.moods.append(d["dominant_emotion"])
-                    if person.facial_areas is None:
-                        person.facial_areas = obj['facial_area']
-                    break
-            else:
-                if target_path:
-                    people.append(Person(path=target_path, facial_area=obj['facial_area'], sex=d["dominant_gender"],
-                                         age=round(d["age"])))
-                    people[-1].moods.append(d["dominant_emotion"])
-
     # extract facial area of the identified image if and only if it has one face
     # otherwise, show image as is
     if len(target_objs) == 1:
@@ -294,7 +272,6 @@ def search_identity(
         target_img = target_img[:, :, ::-1]
     else:
         target_img = cv2.imread(target_path)
-
     return target_path.split("/")[-1], target_img
 
 
